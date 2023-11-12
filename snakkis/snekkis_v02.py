@@ -9,7 +9,7 @@ class Direction(Enum):
     RIGHT = 4
 
 class Snake:
-    def __init__(self, start_pos, snake_block, screen):
+    def __init__(self, name, start_pos, snake_block, screen, color):
         self.length = 1
         self.positions = [start_pos]  # List of positions of the snake's segments
         self.snake_block = snake_block
@@ -17,7 +17,8 @@ class Snake:
         self.y_change = 0
         self.screen = screen
         self.direction = None
-
+        self.name = name
+        self.color = color
     def update_direction(self, event_key):
         if event_key in [pygame.K_LEFT, pygame.K_a] and self.direction != Direction.RIGHT:
             self.x_change = -self.snake_block
@@ -46,7 +47,7 @@ class Snake:
 
     def draw(self):
         for pos in self.positions:
-            pygame.draw.rect(self.screen, (255, 255, 255), [pos[0], pos[1], self.snake_block, self.snake_block])
+            pygame.draw.rect(self.screen, self.color, [pos[0], pos[1], self.snake_block, self.snake_block])
 
     def grow(self):
         self.length += 1
@@ -65,16 +66,63 @@ class GameBoard:
         self.height = height
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.clock = pygame.time.Clock()
-        self.init_game()
+        self.player_names = ["", ""]
+        self.magenta = pygame.Color('magenta')
+        self.yellow = pygame.Color('yellow')
+        self.cyan = pygame.Color('cyan')
+        self.snake_colors = [self.yellow, self.cyan] 
 
     def init_game(self):
+        self.winner = None
         self.snakes = [
-            Snake([self.width // 4, self.height // 2], 10, self.screen),   # Player 1
-            Snake([3 * self.width // 4, self.height // 2], 10, self.screen)  # Player 2
+            Snake(self.player_names[0] if self.player_names[0] else "Player 1", 
+                  [self.width // 4, self.height // 2], 10, self.screen, self.snake_colors[0]),
+            Snake(self.player_names[1] if self.player_names[1] else "Player 2", 
+                  [3 * self.width // 4, self.height // 2], 10, self.screen, self.snake_colors[1])
         ]
         self.reposition_food()
 
+    def main_menu(self):
+        font = pygame.font.SysFont(None, 34)
+        input_boxes = [pygame.Rect(100, 100, 140, 32), pygame.Rect(100, 200, 140, 32)]
+        # color_inactive = pygame.Color('lightskyblue3')
+        # color_active = pygame.Color('dodgerblue2')
+        active = [False, False]
+        done = False
+
+        while not done:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    done = True
+                    return False  # Return False if menu is exited
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    for i, box in enumerate(input_boxes):
+                        if box.collidepoint(event.pos):
+                            active[i] = not active[i]
+                        else:
+                            active[i] = False
+                if event.type == pygame.KEYDOWN:
+                    for i in range(2):
+                        if active[i]:
+                            if event.key == pygame.K_RETURN:
+                                done = True  # Start the game when Enter is pressed
+                                self.init_game()
+                            elif event.key == pygame.K_BACKSPACE:
+                                self.player_names[i] = self.player_names[i][:-1]
+                            else:
+                                self.player_names[i] += event.unicode
+
+            self.screen.fill((30, 30, 30))
+            for i, box in enumerate(input_boxes):
+                txt_surface = font.render(self.player_names[i], True, self.snake_colors[i])
+                self.screen.blit(txt_surface, (box.x + 5, box.y + 5))
+                pygame.draw.rect(self.screen, self.snake_colors[i], box, 2)
+
+            pygame.display.flip()
+        return True  # Return True if names are entered and Enter is pressed
+
     def run_game(self):
+        self.start_time = pygame.time.get_ticks()
         game_over = False
         while not game_over:
             for event in pygame.event.get():
@@ -87,17 +135,31 @@ class GameBoard:
                     # Player 2 controls (Arrow keys)
                     elif event.key in [pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN]:
                         self.snakes[1].update_direction(event.key)                 
+            
+            for i, snake in enumerate(self.snakes):
+                next_position = self.get_next_position(snake.get_head_position(), snake.direction)
 
-            for snake in self.snakes:
-                snake.move()
-                if self.is_out_of_bounds(snake.get_head_position()) or snake.check_self_collision():
+                # Check for collisions with other snakes
+                for j, other_snake in enumerate(self.snakes):
+                    if i != j and list(next_position) in other_snake.positions:
+                        print(f"{snake.name} collision at {next_position} with {other_snake.name}")
+                        game_over = True
+                        self.winner = other_snake.name
+
+                # Check for self-collision and out of bounds for each snake
+                if self.is_out_of_bounds(next_position) or snake.check_self_collision():
+                    print(f"{snake.name} out of bounds or self-collision at {next_position}")
                     game_over = True
-                if self.is_collision(snake.get_head_position(), (self.foodx, self.foody)):
-                    snake.grow()
-                    self.reposition_food()                    
+                    self.winner = self.snakes[1 - i].name
+
+                if not game_over:
+                    snake.move()
+                    if self.is_collision(snake.get_head_position(), (self.foodx, self.foody)):
+                        snake.grow()
+                        self.reposition_food()                
 
             self.screen.fill((0, 0, 0))
-            pygame.draw.rect(self.screen, (255, 0, 0), [self.foodx, self.foody, self.snakes[0].snake_block, self.snakes[0].snake_block])
+            pygame.draw.rect(self.screen, self.magenta, [self.foodx, self.foody, self.snakes[0].snake_block, self.snakes[0].snake_block])
             for snake in self.snakes:
                 snake.draw()
             pygame.display.update()
@@ -131,10 +193,10 @@ class GameBoard:
 
     def game_over_screen(self):
         font = pygame.font.SysFont(None, 55)
-        game_over_text = font.render('Game Over', True, (255, 0, 0))
-        restart_text = font.render('Press R to Restart or Q to Quit', True, (255, 0, 0))
+        game_over_text = font.render(f'Game Over - {self.winner} Wins!', True, self.cyan)
+        restart_text = font.render('Press R to Restart or Q to Quit', True, self.yellow)
 
-        self.screen.blit(game_over_text, [self.width // 4, self.height // 3])
+        self.screen.blit(game_over_text, [self.width // 4 - 100, self.height // 3])
         self.screen.blit(restart_text, [self.width // 4 - 100, self.height // 2])
         pygame.display.update()
 
@@ -155,5 +217,6 @@ class GameBoard:
 
 # Main Program
 game = GameBoard(640, 480)
-game.run_game()
+if game.main_menu():
+    game.run_game()
 pygame.quit()
