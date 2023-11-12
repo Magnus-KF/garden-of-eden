@@ -83,19 +83,23 @@ class GameBoard:
         self.reposition_food()
 
     def main_menu(self):
-        font = pygame.font.SysFont(None, 34)
-        input_boxes = [pygame.Rect(100, 100, 140, 32), pygame.Rect(100, 200, 140, 32)]
-        # color_inactive = pygame.Color('lightskyblue3')
-        # color_active = pygame.Color('dodgerblue2')
+        font = pygame.font.SysFont(None, 55)
+        input_boxes = [pygame.Rect(100, 100, 300, 40), pygame.Rect(100, 200, 300, 40)]  # Larger boxes
+        start_button = pygame.Rect(100, 300, 300, 50)  # Start button rectangle
         active = [False, False]
         done = False
+
+        # Placeholder texts for input boxes
+        placeholder_texts = ["Player1", "Player2"]
 
         while not done:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     done = True
-                    return False  # Return False if menu is exited
+                    return False
                 if event.type == pygame.MOUSEBUTTONDOWN:
+                    if start_button.collidepoint(event.pos):
+                        done = True  # Start the game when the start button is clicked
                     for i, box in enumerate(input_boxes):
                         if box.collidepoint(event.pos):
                             active[i] = not active[i]
@@ -106,7 +110,6 @@ class GameBoard:
                         if active[i]:
                             if event.key == pygame.K_RETURN:
                                 done = True  # Start the game when Enter is pressed
-                                self.init_game()
                             elif event.key == pygame.K_BACKSPACE:
                                 self.player_names[i] = self.player_names[i][:-1]
                             else:
@@ -114,12 +117,20 @@ class GameBoard:
 
             self.screen.fill((30, 30, 30))
             for i, box in enumerate(input_boxes):
-                txt_surface = font.render(self.player_names[i], True, self.snake_colors[i])
+                # Display the name if entered, else display placeholder text
+                display_text = self.player_names[i] if self.player_names[i] else placeholder_texts[i]
+                txt_surface = font.render(display_text, True, self.snake_colors[i])
                 self.screen.blit(txt_surface, (box.x + 5, box.y + 5))
                 pygame.draw.rect(self.screen, self.snake_colors[i], box, 2)
 
+            # Render start button
+            pygame.draw.rect(self.screen, (0, 128, 0), start_button)  # Draw button
+            start_text = font.render('Start Game', True, (255, 255, 255))
+            self.screen.blit(start_text, (start_button.x + 5, start_button.y + 10))
+
             pygame.display.flip()
-        return True  # Return True if names are entered and Enter is pressed
+        self.init_game()
+        return True
 
     def run_game(self):
         self.start_time = pygame.time.get_ticks()
