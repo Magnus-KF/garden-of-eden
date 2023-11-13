@@ -70,6 +70,9 @@ class GameBoard:
         self.magenta = pygame.Color('magenta')
         self.yellow = pygame.Color('yellow')
         self.cyan = pygame.Color('cyan')
+        self.black = pygame.Color('black')
+        self.dark_gray = (51, 51, 51)
+        self.forest_green = (34, 139, 34)
         self.snake_colors = [self.yellow, self.cyan]
         self.eat_sound = pygame.mixer.Sound('snakkis/348112__matrixxx__crunch.wav')
         self.game_over_sound = pygame.mixer.Sound('snakkis/267069__brainclaim__monster-tripod-horn.wav')
@@ -81,22 +84,45 @@ class GameBoard:
     def init_game(self):
         self.winner = None
         self.snakes = [
-            Snake(self.player_names[0] if self.player_names[0] else "Player 1", 
+            Snake(self.player_names[0] if self.player_names[0] else "Adam", 
                   [self.width // 4, self.height // 2], 10, self.screen, self.snake_colors[0]),
-            Snake(self.player_names[1] if self.player_names[1] else "Player 2", 
+            Snake(self.player_names[1] if self.player_names[1] else "Eve", 
                   [3 * self.width // 4, self.height // 2], 10, self.screen, self.snake_colors[1])
         ]
         self.reposition_food()
 
     def main_menu(self):
         font = pygame.font.SysFont(None, 55)
-        input_boxes = [pygame.Rect(100, 100, 300, 50), pygame.Rect(100, 200, 300, 50)]  # Larger boxes
-        start_button = pygame.Rect(100, 300, 300, 60)  # Start button rectangle
+        box_width, box_height = 300, 50
+        center_x_box = (self.width - box_width) // 2
+        center_y_box = (self.height - box_height) // 2
+        start_button_width, start_button_height = 300, 60        
+        background_image = pygame.image.load("snakkis/An ouroboros consisting of two snakes, an anthropomorphic female snake and male snake biting each other's tails, colored with the complementary colors.png")
+        # Define new size for the image
+        new_width, new_height = 640, 640  # Adjust these values as needed for your screen
+
+        # Resize the image
+        background_image = pygame.transform.scale(background_image, (new_width, new_height))
+        image_rect = background_image.get_rect()
+        # Calculate position to center the image
+        center_x = (self.width - image_rect.width) // 2
+        center_y = (self.height - image_rect.height) // 2
+
+        # Adjust vertical positions of the input boxes and start button
+        input_box_y_start = 30  # Starting vertical position for the first input box
+        input_box_spacing = 60  # Vertical spacing between the boxes and button
+
+        input_boxes = [
+            pygame.Rect(center_x_box, center_y_box - input_box_spacing, box_width, box_height),
+            pygame.Rect(center_x_box, center_y_box, box_width, box_height)
+        ]
+        start_button = pygame.Rect(center_x_box, center_y_box +input_box_spacing, start_button_width, start_button_height)
+
         active = [False, False]
         done = False
 
         # Placeholder texts for input boxes
-        placeholder_texts = ["Player1", "Player2"]
+        placeholder_texts = ["Adam", "Eve"]
 
         while not done:
             for event in pygame.event.get():
@@ -123,17 +149,29 @@ class GameBoard:
                                 self.player_names[i] += event.unicode
 
             self.screen.fill((30, 30, 30))
+            self.screen.blit(background_image, (center_x, center_y))
             for i, box in enumerate(input_boxes):
+                box_background = pygame.Surface((box.width, box.height))
+                box_background.set_alpha(153)  # 20% opacity (51 out of 255)
+                box_background.fill(self.snake_colors[i])  # Use the snake color
+                self.screen.blit(box_background, (box.x, box.y))
                 # Display the name if active or entered, else display placeholder text
                 display_text = self.player_names[i] if active[i] or self.player_names[i] else placeholder_texts[i]
-                txt_surface = font.render(display_text, True, self.snake_colors[i])
-                self.screen.blit(txt_surface, (box.x + 5, box.y + 5))
+                txt_surface = font.render(display_text, True, self.dark_gray)
+                txt_rect = txt_surface.get_rect(center=box.center)
+                self.screen.blit(txt_surface, txt_rect.topleft)
                 pygame.draw.rect(self.screen, self.snake_colors[i], box, 2)
 
-            # Render start button
-            pygame.draw.rect(self.screen, self.magenta, start_button)  # Draw button
-            start_text = font.render('Start Game', True, (255, 255, 255))
-            self.screen.blit(start_text, (start_button.x + 5, start_button.y + 10))
+            # Draw start button with semi-transparent background
+            start_button_background = pygame.Surface((start_button.width, start_button.height))
+            start_button_background.set_alpha(102)  # 40% opacity (102 out of 255)
+            start_button_background.fill(self.magenta)  # Fill with a chosen color, e.g., magenta
+            self.screen.blit(start_button_background, start_button.topleft)
+
+            # Render start button text
+            start_text = font.render('Start Game', True, self.black)
+            start_text_rect = start_text.get_rect(center=start_button.center)
+            self.screen.blit(start_text, start_text_rect.topleft)
 
             pygame.display.flip()
 
@@ -228,7 +266,7 @@ class GameBoard:
         if smooch:
             game_over_text = font.render(f'You are here forever', True, self.magenta)
         else:
-            game_over_text = font.render(f'Game Over - {self.winner.name} Wins!', True, self.winner.color)
+            game_over_text = font.render(f'{self.winner.name} wins!', True, self.winner.color)
         restart_text = font.render('Press R to Restart or Q to Quit', True, self.magenta)
 
         self.screen.blit(game_over_text, [self.width // 4 - 100, self.height // 3])
@@ -251,7 +289,9 @@ class GameBoard:
                         return  # Quit the game
 
 # Main Program
-game = GameBoard(640, 480)
+# game = GameBoard(640, 480)
+game = GameBoard(640, 240)
+
 if game.main_menu():
     game.run_game()
 pygame.quit()
