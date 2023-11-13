@@ -72,6 +72,7 @@ class GameBoard:
         self.cyan = pygame.Color('cyan')
         self.black = pygame.Color('black')
         self.dark_gray = (51, 51, 51)
+        self.deep_gray = (112, 112, 112)
         self.forest_green = (34, 139, 34)
         self.snake_colors = [self.yellow, self.cyan]
         self.eat_sound = pygame.mixer.Sound('snakkis/348112__matrixxx__crunch.wav')
@@ -263,14 +264,35 @@ class GameBoard:
 
     def game_over_screen(self, smooch = False):
         font = pygame.font.SysFont(None, 55)
-        if smooch:
-            game_over_text = font.render(f'You are here forever', True, self.magenta)
-        else:
-            game_over_text = font.render(f'{self.winner.name} wins!', True, self.winner.color)
-        restart_text = font.render('Press R to Restart or Q to Quit', True, self.magenta)
 
-        self.screen.blit(game_over_text, [self.width // 4 - 100, self.height // 3])
-        self.screen.blit(restart_text, [self.width // 4 - 100, self.height // 2])
+        if smooch:
+            message = "You are here forever"
+            box_background_color = self.magenta
+        else:
+            message = f"{self.winner.name} wins!"
+            box_background_color = self.winner.color
+
+        game_over_text = font.render(message, True, self.dark_gray)
+        restart_text = font.render('Press R to Restart or Q to Quit', True, self.dark_gray)
+
+        # Calculate the size and position of the semi-transparent box
+        game_over_text_rect = game_over_text.get_rect()
+        restart_text_rect = restart_text.get_rect()
+        box_width = max(game_over_text_rect.width, restart_text_rect.width) + 40
+        box_height = game_over_text_rect.height + restart_text_rect.height + 30
+        box_x = (self.width - box_width) // 2
+        box_y = (self.height - box_height) // 2
+
+        # Create a semi-transparent background box
+        box_background = pygame.Surface((box_width, box_height))
+        box_background.set_alpha(128)  # 50% opacity
+        box_background.fill(box_background_color)
+        self.screen.blit(box_background, (box_x, box_y))
+
+        # Center-align and blit the text within the box
+        self.screen.blit(game_over_text, (box_x + (box_width - game_over_text_rect.width) // 2, box_y + 10))
+        self.screen.blit(restart_text, (box_x + (box_width - restart_text_rect.width) // 2, box_y + game_over_text_rect.height + 20))
+
         pygame.display.update()
 
         waiting_for_input = True
@@ -287,7 +309,7 @@ class GameBoard:
                     if event.key == pygame.K_q:
                         waiting_for_input = False
                         return  # Quit the game
-
+        
 # Main Program
 # game = GameBoard(640, 480)
 game = GameBoard(640, 240)
@@ -295,3 +317,4 @@ game = GameBoard(640, 240)
 if game.main_menu():
     game.run_game()
 pygame.quit()
+
