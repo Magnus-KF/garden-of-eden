@@ -70,7 +70,12 @@ class GameBoard:
         self.magenta = pygame.Color('magenta')
         self.yellow = pygame.Color('yellow')
         self.cyan = pygame.Color('cyan')
-        self.snake_colors = [self.yellow, self.cyan] 
+        self.snake_colors = [self.yellow, self.cyan]
+        self.eat_sound = pygame.mixer.Sound('snakkis/348112__matrixxx__crunch.wav')
+        self.game_over_sound = pygame.mixer.Sound('snakkis/267069__brainclaim__monster-tripod-horn.wav')
+        self.start_game_sound = pygame.mixer.Sound('snakkis/540162__schreibsel__snake-hissing.mp3')
+        pygame.mixer.music.load('snakkis/244417__lennyboy__scaryviolins.ogg')
+        self.start_game_sound.play()
 
     def init_game(self):
         self.winner = None
@@ -84,8 +89,8 @@ class GameBoard:
 
     def main_menu(self):
         font = pygame.font.SysFont(None, 55)
-        input_boxes = [pygame.Rect(100, 100, 300, 40), pygame.Rect(100, 200, 300, 40)]  # Larger boxes
-        start_button = pygame.Rect(100, 300, 300, 50)  # Start button rectangle
+        input_boxes = [pygame.Rect(100, 100, 300, 50), pygame.Rect(100, 200, 300, 50)]  # Larger boxes
+        start_button = pygame.Rect(100, 300, 300, 60)  # Start button rectangle
         active = [False, False]
         done = False
 
@@ -102,7 +107,8 @@ class GameBoard:
                         done = True  # Start the game when the start button is clicked
                     for i, box in enumerate(input_boxes):
                         if box.collidepoint(event.pos):
-                            active[i] = not active[i]
+                            active[i] = True
+                            self.player_names[i] = ""  # Clear the placeholder text when box is clicked
                         else:
                             active[i] = False
                 if event.type == pygame.KEYDOWN:
@@ -117,23 +123,25 @@ class GameBoard:
 
             self.screen.fill((30, 30, 30))
             for i, box in enumerate(input_boxes):
-                # Display the name if entered, else display placeholder text
-                display_text = self.player_names[i] if self.player_names[i] else placeholder_texts[i]
+                # Display the name if active or entered, else display placeholder text
+                display_text = self.player_names[i] if active[i] or self.player_names[i] else placeholder_texts[i]
                 txt_surface = font.render(display_text, True, self.snake_colors[i])
                 self.screen.blit(txt_surface, (box.x + 5, box.y + 5))
                 pygame.draw.rect(self.screen, self.snake_colors[i], box, 2)
 
             # Render start button
-            pygame.draw.rect(self.screen, (0, 128, 0), start_button)  # Draw button
+            pygame.draw.rect(self.screen, self.magenta, start_button)  # Draw button
             start_text = font.render('Start Game', True, (255, 255, 255))
             self.screen.blit(start_text, (start_button.x + 5, start_button.y + 10))
 
             pygame.display.flip()
-        self.init_game()
+
+        self.init_game()  # Initialize the game with the entered names
         return True
 
     def run_game(self):
         self.start_time = pygame.time.get_ticks()
+        pygame.mixer.music.play(loops=-1)
         game_over = False
         while not game_over:
             for event in pygame.event.get():
@@ -155,19 +163,20 @@ class GameBoard:
                     if i != j and list(next_position) in other_snake.positions:
                         print(f"{snake.name} collision at {next_position} with {other_snake.name}")
                         game_over = True
-                        self.winner = other_snake.name
+                        self.winner = other_snake
 
                 # Check for self-collision and out of bounds for each snake
                 if self.is_out_of_bounds(next_position) or snake.check_self_collision():
                     print(f"{snake.name} out of bounds or self-collision at {next_position}")
                     game_over = True
-                    self.winner = self.snakes[1 - i].name
+                    self.winner = self.snakes[1 - i]
 
                 if not game_over:
                     snake.move()
                     if self.is_collision(snake.get_head_position(), (self.foodx, self.foody)):
                         snake.grow()
                         self.reposition_food()                
+                        self.eat_sound.play()
 
             self.screen.fill((0, 0, 0))
             pygame.draw.rect(self.screen, self.magenta, [self.foodx, self.foody, self.snakes[0].snake_block, self.snakes[0].snake_block])
@@ -175,7 +184,8 @@ class GameBoard:
                 snake.draw()
             pygame.display.update()
             self.clock.tick(15)
-
+        pygame.mixer.music.stop()
+        self.game_over_sound.play()
         self.game_over_screen()
         # return game_over
 
@@ -204,8 +214,8 @@ class GameBoard:
 
     def game_over_screen(self):
         font = pygame.font.SysFont(None, 55)
-        game_over_text = font.render(f'Game Over - {self.winner} Wins!', True, self.cyan)
-        restart_text = font.render('Press R to Restart or Q to Quit', True, self.yellow)
+        game_over_text = font.render(f'Game Over - {self.winner.name} Wins!', True, self.winner.color)
+        restart_text = font.render('Press R to Restart or Q to Quit', True, self.magenta)
 
         self.screen.blit(game_over_text, [self.width // 4 - 100, self.height // 3])
         self.screen.blit(restart_text, [self.width // 4 - 100, self.height // 2])
