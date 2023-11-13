@@ -74,6 +74,7 @@ class GameBoard:
         self.eat_sound = pygame.mixer.Sound('snakkis/348112__matrixxx__crunch.wav')
         self.game_over_sound = pygame.mixer.Sound('snakkis/267069__brainclaim__monster-tripod-horn.wav')
         self.start_game_sound = pygame.mixer.Sound('snakkis/540162__schreibsel__snake-hissing.mp3')
+        self.head_to_head_collision_sound = pygame.mixer.Sound('snakkis/346661__deleted_user_2104797__kiss_01.wav')
         pygame.mixer.music.load('snakkis/244417__lennyboy__scaryviolins.ogg')
         self.start_game_sound.play()
 
@@ -143,6 +144,7 @@ class GameBoard:
         self.start_time = pygame.time.get_ticks()
         pygame.mixer.music.play(loops=-1)
         game_over = False
+        smooch = False
         while not game_over:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -158,16 +160,26 @@ class GameBoard:
             for i, snake in enumerate(self.snakes):
                 next_position = self.get_next_position(snake.get_head_position(), snake.direction)
 
-                # Check for collisions with other snakes
                 for j, other_snake in enumerate(self.snakes):
-                    if i != j and list(next_position) in other_snake.positions:
-                        print(f"{snake.name} collision at {next_position} with {other_snake.name}")
-                        game_over = True
-                        self.winner = other_snake
+                    if i != j:
+                        # Check if next position is the head of the other snake
+                        if next_position == other_snake.get_head_position():
+                            print(f"Head-to-head collision between {snake.name} and {other_snake.name}")
+                            game_over = True
+                            # Handle head-to-head collision (e.g., playing sound, setting game over message)
+                            self.head_to_head_collision_sound.play()
+                            smooch = True
+                        elif next_position in other_snake.positions:
+                            print(f"{snake.name} collision at {next_position} with {other_snake.name}")
+                            game_over = True
+                            self.winner = other_snake
+                            self.game_over_sound.play()
+
 
                 # Check for self-collision and out of bounds for each snake
                 if self.is_out_of_bounds(next_position) or snake.check_self_collision():
                     print(f"{snake.name} out of bounds or self-collision at {next_position}")
+                    self.start_game_sound.play()
                     game_over = True
                     self.winner = self.snakes[1 - i]
 
@@ -184,10 +196,9 @@ class GameBoard:
                 snake.draw()
             pygame.display.update()
             self.clock.tick(15)
+
         pygame.mixer.music.stop()
-        self.game_over_sound.play()
-        self.game_over_screen()
-        # return game_over
+        self.game_over_screen(smooch)
 
     def get_next_position(self, current_position, direction):
         x, y = current_position
@@ -199,7 +210,7 @@ class GameBoard:
             x -= self.snakes[0].snake_block
         elif direction == Direction.RIGHT:
             x += self.snakes[0].snake_block
-        return (x, y)
+        return [x, y]
 
     def is_out_of_bounds(self, position):
         x, y = position
@@ -212,9 +223,12 @@ class GameBoard:
         self.foodx = round(random.randrange(0, self.width - self.snakes[1].snake_block) / 10.0) * 10.0
         self.foody = round(random.randrange(0, self.height - self.snakes[1].snake_block) / 10.0) * 10.0
 
-    def game_over_screen(self):
+    def game_over_screen(self, smooch = False):
         font = pygame.font.SysFont(None, 55)
-        game_over_text = font.render(f'Game Over - {self.winner.name} Wins!', True, self.winner.color)
+        if smooch:
+            game_over_text = font.render(f'You are here forever', True, self.magenta)
+        else:
+            game_over_text = font.render(f'Game Over - {self.winner.name} Wins!', True, self.winner.color)
         restart_text = font.render('Press R to Restart or Q to Quit', True, self.magenta)
 
         self.screen.blit(game_over_text, [self.width // 4 - 100, self.height // 3])
