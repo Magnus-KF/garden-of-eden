@@ -164,7 +164,7 @@ class GameBoard:
 
             # Draw start button with semi-transparent background
             start_button_background = pygame.Surface((start_button.width, start_button.height))
-            start_button_background.set_alpha(102)  # 40% opacity (102 out of 255)
+            start_button_background.set_alpha(153)  # 40% opacity (102 out of 255)
             start_button_background.fill(self.magenta)  # Fill with a chosen color, e.g., magenta
             self.screen.blit(start_button_background, start_button.topleft)
 
